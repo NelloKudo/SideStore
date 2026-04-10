@@ -87,6 +87,16 @@ private struct ActiveAppsWidgetView: View
             }
         }
         .foregroundStyle(.white)
+        .overlay(alignment: .bottom) {
+            if let msg = entry.debugMessage {
+                Text(msg)
+                    .font(.system(size: 8))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 4)
+                    .multilineTextAlignment(.center)
+            }
+        }
         .containerBackground(for: .widget) {
             if colorScheme == .dark
             {
@@ -204,10 +214,19 @@ private struct ActiveAppsWidgetView: View
     }
     
     private var placeholder: some View {
-        Text("App Not Found")
-            .font(.system(.body, design: .rounded))
-            .fontWeight(.semibold)
-            .foregroundColor(Color.white.opacity(0.4))
+        VStack(spacing: 4) {
+            Text("No Apps Found")
+                .font(.system(.body, design: .rounded))
+                .fontWeight(.semibold)
+                .foregroundColor(Color.white.opacity(0.4))
+            if let msg = entry.debugMessage {
+                Text(msg)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundColor(Color.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+            }
+        }
     }
 }
 

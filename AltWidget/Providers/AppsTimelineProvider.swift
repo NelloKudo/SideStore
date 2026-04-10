@@ -19,12 +19,14 @@ struct AppsEntry<T>: TimelineEntry
     var isPlaceholder: Bool = false
     
     var context: T?
+    var debugMessage: String? = nil
     
 }
 
 class AppsTimelineProviderBase<T>
 {
     typealias Entry = AppsEntry
+    var lastDebugMessage: String? = nil
     
     func placeholder(in context: TimelineProviderContext) -> AppsEntry<T>
     {
@@ -41,14 +43,14 @@ class AppsTimelineProviderBase<T>
             
             apps = getUpdatedData(apps, context)
             
-            let entry = AppsEntry(date: Date(), apps: apps, context: context)
+            let entry = AppsEntry(date: Date(), apps: apps, context: context, debugMessage: lastDebugMessage)
             return entry
         }
         catch
         {
             print("Failed to prepare widget snapshot:", error)
-            
-            let entry = AppsEntry(date: Date(), apps: [], context: context)
+            let msg = (lastDebugMessage.map { $0 + " " } ?? "") + "snap_err:\(error.localizedDescription)"
+            let entry = AppsEntry(date: Date(), apps: [], context: context, debugMessage: msg)
             return entry
         }
     }
@@ -63,7 +65,7 @@ class AppsTimelineProviderBase<T>
 
             apps = getUpdatedData(apps, context)
 
-            var entries = self.makeEntries(for: apps, in: context)
+            var entries = self.makeEntries(for: apps, in: context, debugMessage: lastDebugMessage)
             
 //            #if targetEnvironment(simulator)
 //            if let first = entries.first{
@@ -77,8 +79,8 @@ class AppsTimelineProviderBase<T>
         catch
         {
             print("Failed to prepare widget timeline:", error)
-            
-            let entry = AppsEntry(date: Date(), apps: [], context: context)
+            let msg = (lastDebugMessage.map { $0 + " " } ?? "") + "tl_err:\(error.localizedDescription)"
+            let entry = AppsEntry(date: Date(), apps: [], context: context, debugMessage: msg)
             let timeline = Timeline(entries: [entry], policy: .atEnd)
             return timeline
         }
@@ -118,7 +120,7 @@ extension AppsTimelineProviderBase
         return apps
     }
     
-    func makeEntries(for snapshots: [AppSnapshot], in context: T? = nil) -> [AppsEntry<T>]
+    func makeEntries(for snapshots: [AppSnapshot], in context: T? = nil, debugMessage: String? = nil) -> [AppsEntry<T>]
     {
         let sortedAppsByExpirationDate = snapshots.sorted { $0.expirationDate < $1.expirationDate }
         guard let firstExpiringApp = sortedAppsByExpirationDate.first, let lastExpiringApp = sortedAppsByExpirationDate.last else { return [] }
@@ -132,11 +134,11 @@ extension AppsTimelineProviderBase
         switch numberOfDays
         {
         case ..<0:
-            let entry = AppsEntry(date: currentDate, relevance: TimelineEntryRelevance(score: 0.0), apps: snapshots, context: context)
+            let entry = AppsEntry(date: currentDate, relevance: TimelineEntryRelevance(score: 0.0), apps: snapshots, context: context, debugMessage: debugMessage)
             entries.append(entry)
             
         case 0:
-            let entry = AppsEntry(date: currentDate, relevance: TimelineEntryRelevance(score: 1.0), apps: snapshots, context: context)
+            let entry = AppsEntry(date: currentDate, relevance: TimelineEntryRelevance(score: 1.0), apps: snapshots, context: context, debugMessage: debugMessage)
             entries.append(entry)
             
         default:
@@ -160,7 +162,7 @@ extension AppsTimelineProviderBase
                     score = 0
                 }
                 
-                let entry = AppsEntry(date: entryDate, relevance: TimelineEntryRelevance(score: score), apps: snapshots, context: context)
+                let entry = AppsEntry(date: entryDate, relevance: TimelineEntryRelevance(score: score), apps: snapshots, context: context, debugMessage: debugMessage)
                 return entry
             }
             
@@ -186,12 +188,13 @@ extension AppsTimelineProviderBase
                 return bundleIDs
             }
             
+            lastDebugMessage = "grp:\(Bundle.main.altstoreAppGroup ?? "nil") ids:\(bundleIDs.count)"
             return bundleIDs
         }
         catch
         {
             print("Failed to fetch active bundle IDs, falling back to AltStore bundle ID.", error)
-            
+            lastDebugMessage = "grp:\(Bundle.main.altstoreAppGroup ?? "nil") db_err:\(error.localizedDescription)"
             return [StoreApp.altstoreAppID]
         }
     }
