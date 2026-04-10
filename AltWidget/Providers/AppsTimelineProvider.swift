@@ -196,8 +196,12 @@ extension AppsTimelineProviderBase
                 return (bundleIDs, totalCount, activeCount)
             }
             
-            let dbURL = DatabaseManager.shared.persistentContainer.persistentStoreCoordinator.persistentStores.first?.url?.lastPathComponent ?? "?"
-            lastDebugMessage = "grp:\(Bundle.main.altstoreAppGroup ?? "nil") db:\(dbURL) total:\(totalCount) active:\(activeCount) ids:\(bundleIDs.count)"
+            let dbFullURL = DatabaseManager.shared.persistentContainer.persistentStoreCoordinator.persistentStores.first?.url
+            let dbPath = dbFullURL?.path ?? "?"
+            // Trim the group container prefix so it fits on screen
+            let groupContainer = Bundle.main.altstoreAppGroup.flatMap { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0)?.path } ?? ""
+            let dbRelative = dbPath.hasPrefix(groupContainer) ? String(dbPath.dropFirst(groupContainer.count)) : dbPath
+            lastDebugMessage = "grp:\(Bundle.main.altstoreAppGroup ?? "nil") path:\(dbRelative) total:\(totalCount) active:\(activeCount)"
             return bundleIDs
         }
         catch
