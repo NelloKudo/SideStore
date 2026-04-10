@@ -510,15 +510,13 @@ class FetchProvisioningProfilesInstallOperation: FetchProvisioningProfilesOperat
                 }
             }
             
-            // Make sure we add .AltWidget for the widget
-            var altStoreAppGroupID = Bundle.baseAltStoreAppGroupID
-            for (_, group) in applicationGroups.enumerated() {
-                if group.contains("AltWidget") {
-                    altStoreAppGroupID += ".AltWidget"
-                    break
-                }
-            }
-            
+            // Always use the base app group ID for the main SideStore app.
+            // Appending ".AltWidget" here used to cause the main app to be
+            // provisioned with a *different* group than the widget extension,
+            // which broke shared-container DB access (especially on iOS 26.4+
+            // where containerURL enforces entitlements strictly).
+            let altStoreAppGroupID = Bundle.baseAltStoreAppGroupID
+
             // Potentially updating app groups for this specific AltStore.
             // Find the (unique) AltStore app group, then replace it
             // with the correct "base" app group ID.
