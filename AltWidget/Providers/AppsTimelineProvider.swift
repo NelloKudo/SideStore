@@ -179,16 +179,25 @@ extension AppsTimelineProviderBase
             try await self.prepare()
             
             let context = DatabaseManager.shared.persistentContainer.newBackgroundContext()
-            let bundleIDs = try await context.performAsync {
-                let fetchRequest = InstalledApp.activeAppsFetchRequest() as! NSFetchRequest<NSDictionary>
-                fetchRequest.resultType = .dictionaryResultType
-                fetchRequest.propertiesToFetch = [#keyPath(InstalledApp.bundleIdentifier)]
-                
-                let bundleIDs = try context.fetch(fetchRequest).compactMap { $0[#keyPath(InstalledApp.bundleIdentifier)] as? String }
-                return bundleIDs
+            let (bundleIDs, totalCount, activeCount) = try await context.performAsync {
+                // How many InstalledApp rows exist at all?
+                let allReq = InstalledApp.fetchRequest() as NSFetchRequest<InstalledApp>
+                let totalCount = (try? context.count(for: allReq)) ?? -1
+
+                // How many are active?
+                let activeReq = InstalledApp.activeAppsFetchRequest()
+                let activeCount = (try? context.count(for: activeReq)) ?? -1
+
+                // Fetch bundle IDs for active apps
+                let dictReq = InstalledApp.activeAppsFetchRequest() as! NSFetchRequest<NSDictionary>
+                dictReq.resultType = .dictionaryResultType
+                dictReq.propertiesToFetch = [#keyPath(InstalledApp.bundleIdentifier)]
+                let bundleIDs = try context.fetch(dictReq).compactMap { $0[#keyPath(InstalledApp.bundleIdentifier)] as? String }
+                return (bundleIDs, totalCount, activeCount)
             }
             
-            lastDebugMessage = "grp:\(Bundle.main.altstoreAppGroup ?? "nil") ids:\(bundleIDs.count)"
+            let dbURL = DatabaseManager.shared.persistentContainer.persistentStoreCoordinator.persistentStores.first?.url?.lastPathComponent ?? "?"
+            lastDebugMessage = "grp:\(Bundle.main.altstoreAppGroup ?? "nil") db:\(dbURL) total:\(totalCount) active:\(activeCount) ids:\(bundleIDs.count)"
             return bundleIDs
         }
         catch
